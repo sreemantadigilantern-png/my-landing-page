@@ -8,7 +8,7 @@ One mobile-first landing page for Google Ads and Meta Ads traffic. Plain HTML, C
 | `styles.css` | All styling. Figma tokens are CSS variables at the top |
 | `script.js` | `CONFIG` block at the top, GTM loader, URL parameters, WhatsApp codes, forms, events |
 | `fonts/` | Inter variable font, latin subset, self-hosted, `font-display: swap` |
-| `scripts/optimise-images.mjs` | sharp script: photos in `assets/source/` to responsive WebP in `images/` |
+| `scripts/optimise-images.mjs`, `scripts/image-plan.json` | sharp script and crop plan: photos in `assets/source/` to responsive WebP in `images/`. Never reads `assets/held/` |
 | `scripts/check-copy.mjs` | Counts keywords and scans for banned terms. `--write` regenerates `KEYWORDS.md` |
 | `ASSETS.md`, `KEYWORDS.md`, `TEST.md` | Image inventory, keyword audit, tracking tests |
 
@@ -16,7 +16,7 @@ Preview: `python3 -m http.server 8000` in this folder, then open `http://localho
 
 ## Status: read this first
 
-1. **No photographs are on the page.** `assets/source/` was not in the repository and the Figma image files could not be downloaded from this environment (network policy blocks `www.figma.com` assets). No stock, AI or placeholder images were used, so the photo sections are text and icon layouts. See `ASSETS.md` for the 10-minute steps to add the real photos. Until then there is no `og:image` either.
+1. **No photographs are on the page yet.** The image plan (three approved photos in `assets/source/`, four held in `assets/held/`) is built into the scripts and docs, but none of those files are in the repository. Sections without a photo use a green panel with an inline SVG line icon. See `ASSETS.md` for the crops, where each approved photo goes, the "Held images" list, and how to enable a held image later (`CONFIG.APPROVED_IMAGES`). Until a real photo exists there is no `og:image`.
 2. **Hero layout differs from the brief on purpose.** With no photo, the hero form sits on the right on desktop (visible without scrolling) and the clinic facts card sits under the ticks. On mobile the order is H1, form, subhead, ticks, clinic card, so the form and Book button fit inside a 375 x 667 screen.
 3. **No ads-ready until** the GTM ID, form endpoint and privacy policy URL are set (see checklist).
 
@@ -70,6 +70,7 @@ Contrast checked: white on `--ink` 18.9:1; `--grey` on white 8.3:1 and on mint 7
 | Privacy and terms URLs | `privacyUrl`, `termsUrl` | `/privacy-policy/`, `/terms-and-conditions/` | Pages must exist before ads go live |
 | Online booking embed | `bookingEmbedUrl`, `bookingEmbedOrigin` | empty | `#booking-embed` stays hidden until set. Adapt the `message` listener (stub) to the tool's completion message, which fires `booking_confirmed` |
 | Doctor photo | `SHOW_DOCTOR_PHOTO` | `false` | Leave false. No doctor photo is used on this page |
+| Held images | `APPROVED_IMAGES` | `[]` | Add a file name only after the photo is confirmed real, with written consent, and moved from `assets/held/` to `assets/source/` |
 | noindex | `noindex` | `false` | Set `true` on staging |
 | Canonical and share URL | `index.html` head | `https://eyeq.biz/book-consultation` | **Assumed** from the Figma footer email domain. Check it |
 | Open Graph image | `index.html` head | absent | Add a real 1200 x 630 clinic photo when available |

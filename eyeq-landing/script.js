@@ -16,7 +16,24 @@ const CONFIG = {
   bookingEmbedUrl: "",                        // CONFIG: online booking tool URL. Empty keeps #booking-embed hidden.
   bookingEmbedOrigin: "",                     // CONFIG: origin of the booking tool, used to trust its completion message
   SHOW_DOCTOR_PHOTO: false,                   // CONFIG: stays false. No doctor photo is used on this page.
-  noindex: false                              // CONFIG: true adds <meta name="robots" content="noindex">
+  noindex: false,                             // CONFIG: true adds <meta name="robots" content="noindex">
+  /* HELD IMAGES. Files in assets/held/ are NOT used. To enable one later: confirm it is a real photograph with written
+     consent, move it from assets/held/ to assets/source/, run `npm run images`, then add its file name here.
+     The page then swaps the matching green panel (IMAGE_SLOTS below) for the photo. Nothing else changes. */
+  APPROVED_IMAGES: [],                        // CONFIG: e.g. ["child-glasses.jpg"]
+  IMAGE_ALT: {                                // alt text per held file: edit to say what the photo really shows
+    "child-glasses.jpg": "Child trying on glasses at Eye Q Opticals & Eye Clinic",
+    "elderly-reading.jpg": "Older adult reading at Eye Q Opticals & Eye Clinic",
+    "woman-glasses.jpg": "Adult trying on glasses at Eye Q Opticals & Eye Clinic",
+    "doctor-portrait.jpg": "Dr. Shalini Shetty, Eye Q Opticals & Eye Clinic"
+  }
+};
+/* Which panel each held photo may fill. doctor-portrait.jpg is used only when SHOW_DOCTOR_PHOTO is true. */
+const IMAGE_SLOTS = {
+  "child-glasses.jpg": ["audience-children", "myopia"],
+  "elderly-reading.jpg": ["audience-adults40", "diabetic"],
+  "woman-glasses.jpg": ["audience-working", "contact-lens"],
+  "doctor-portrait.jpg": ["doctor"]
 };
 
 (function () {
@@ -294,6 +311,32 @@ const CONFIG = {
   }
   doc.addEventListener("focusin", function (e) {
     if (bar && e.target.matches && e.target.matches("input, select")) bar.classList.add("is-hidden");
+  });
+
+  /* ---------- held images: only files listed in CONFIG.APPROVED_IMAGES are ever shown ---------- */
+  CONFIG.APPROVED_IMAGES.forEach(function (file) {
+    if (file === "doctor-portrait.jpg" && !CONFIG.SHOW_DOCTOR_PHOTO) return;
+    var slots = IMAGE_SLOTS[file];
+    if (!slots) return;
+    var base = file.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    slots.forEach(function (slot) {
+      var box = $("[data-img-slot=\"" + slot + "\"]");
+      if (!box) return;
+      var path = "images/" + base + "-800.webp";
+      var probe = new Image();   /* the photo replaces the panel only once the file has loaded; a missing file leaves the panel */
+      probe.onload = function () {
+        var pic = doc.createElement("picture");
+        var src = doc.createElement("source");
+        src.type = "image/webp";
+        src.srcset = "images/" + base + "-400.webp 400w, " + path + " 800w, images/" + base + "-1200.webp 1200w";
+        src.sizes = box.classList.contains("green-panel") ? "(min-width: 900px) 40vw, 92vw" : "(min-width: 900px) 22vw, 92vw";
+        var img = doc.createElement("img");
+        img.src = path; img.loading = "lazy"; img.decoding = "async"; img.width = 800; img.height = 500; img.alt = CONFIG.IMAGE_ALT[file] || "";
+        pic.appendChild(src); pic.appendChild(img);
+        box.textContent = ""; box.appendChild(pic); box.classList.add("has-photo");
+      };
+      probe.src = path;
+    });
   });
 
   /* ---------- gentle fade on scroll ---------- */

@@ -1,0 +1,27 @@
+{
+  "_readme": "Crop plan for the three approved photos in assets/source/. Crops are fractions of the source image (x, y, w, h from the top left). 'aspect' (width:height) trims the crop to that shape, centred on 'focusY'. Entries with 'requiresCrop': true are refused until a real crop is entered and 'cropChecked' is true, so the banner on clinic-eyechart-wall.jpg can never ship by accident. Photos not listed here are converted whole. Files in assets/held/ are never read.",
+  "images": [
+    {
+      "file": "kids-optical-arches.jpg",
+      "outputs": [
+        { "name": "hero", "widths": [800, 1200, 1600], "note": "Desktop hero background. Left third is the pale fade for text." },
+        { "name": "hero-m", "widths": [400, 800], "crop": { "x": 0.3333, "y": 0, "w": 0.6667, "h": 1 }, "aspect": "16:10", "focusY": 0.5, "note": "Mobile strip above the H1: right two-thirds at 16:10. Check the crop by eye." }
+      ],
+      "jpegFallback": "hero"
+    },
+    {
+      "file": "clinic-eyechart-wall.jpg",
+      "requiresCrop": true,
+      "cropChecked": false,
+      "outputs": [
+        { "name": "eyechart", "widths": [400, 800, 1200], "crop": null, "note": "MUST remove the left-hand banner (stand with 'Slow down myopia progression' and a percentage). Enter a crop x,y,w,h that excludes it, or paint it out first. Keep the eye chart wall and the EYE Q sign. Set cropChecked to true only after opening the output and confirming no text or figure from the banner is legible." }
+      ]
+    },
+    {
+      "file": "slit-lamp-exam.jpg",
+      "outputs": [
+        { "name": "slit-lamp", "widths": [400, 800, 1200], "crop": { "x": 0.5, "y": 0, "w": 0.5, "h": 1 }, "note": "Right half: slit lamp equipment and hands only. Open the output and confirm no face is visible." }
+      ]
+    }
+  ]
+}

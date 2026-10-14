@@ -311,3 +311,19 @@ address { font-style: normal; font-size: 1.125rem; color: var(--ink); margin-bot
   .legal .copy { flex-basis: auto; margin-left: auto; }
   .html-js-offset { scroll-margin-top: 100px; }
 }
+
+/* ---------- green panels with line icons (used where no approved photo exists) ---------- */
+.svc-visual { display: grid; gap: 16px; align-self: start; }
+.green-panel { background: var(--green); color: var(--ink); border-radius: var(--r-panel); padding: 28px; position: relative; overflow: hidden; min-height: 180px; display: flex; flex-direction: column; justify-content: flex-end; }
+.green-panel::before { content: ""; position: absolute; right: -70px; top: -70px; width: 220px; height: 220px; border-radius: 50%; border: 28px solid rgba(11,19,14,.12); }
+.gp-ico { width: 64px; height: 64px; color: var(--ink); position: relative; margin-bottom: 14px; }
+.gp-cap { color: var(--ink); font-weight: 600; font-size: 1.25rem; margin: 0 0 2px; position: relative; }
+.gp-line { color: var(--ink); font-weight: 500; margin: 0; position: relative; }
+.aud-tile { width: 64px; height: 64px; border-radius: var(--r-card); background: var(--green); display: flex; align-items: center; justify-content: center; margin-bottom: 4px; overflow: hidden; }
+.aud-tile .aud-ico { color: var(--ink); width: 36px; height: 36px; }
+.doc-tile { margin-bottom: 12px; }
+.green-panel picture, .aud-tile picture, .green-panel img, .aud-tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.green-panel.has-photo { padding: 0; min-height: 0; aspect-ratio: 16 / 10; }
+.green-panel.has-photo::before { display: none; }
+.aud-tile.has-photo { width: 100%; height: auto; aspect-ratio: 16 / 10; }
+@media (min-width: 900px) { .green-panel { min-height: 220px; } }

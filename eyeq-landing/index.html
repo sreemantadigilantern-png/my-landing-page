@@ -168,25 +168,25 @@
     <p class="lead">Searching for an eye test near me? Choose who the visit is for. We will call to confirm a time that suits you.</p>
     <div class="grid-4">
       <article class="card aud">
-        <svg class="aud-ico" aria-hidden="true"><use href="#i-child"/></svg>
+        <div class="aud-tile" data-img-slot="audience-children"><svg class="aud-ico" aria-hidden="true"><use href="#i-child"/></svg></div>
         <h3>Children</h3>
         <p>A kids eye test near me families can book: an eye check and myopia care for school-age children, with kids' frames fitted on site.</p>
         <a class="btn btn-outline" href="#myopia" data-book data-cta="audience-card" data-svc="myopia" data-service-value="childrens_eye_check" data-who="my_child">Book for my child</a>
       </article>
       <article class="card aud">
-        <svg class="aud-ico" aria-hidden="true"><use href="#i-screen"/></svg>
+        <div class="aud-tile" data-img-slot="audience-working"><svg class="aud-ico" aria-hidden="true"><use href="#i-screen"/></svg></div>
         <h3>Working adults and students</h3>
         <p>A comprehensive eye test, and a look at screen strain after long hours on a laptop or phone.</p>
         <a class="btn btn-outline" href="#eye-test" data-book data-cta="audience-card" data-svc="eyetest" data-who="myself">Book an eye test</a>
       </article>
       <article class="card aud">
-        <svg class="aud-ico" aria-hidden="true"><use href="#i-check"/></svg>
+        <div class="aud-tile" data-img-slot="audience-adults40"><svg class="aud-ico" aria-hidden="true"><use href="#i-check"/></svg></div>
         <h3>Adults 40 and above</h3>
         <p>Diabetic eye screening and routine eye checks with the eye doctor.</p>
         <a class="btn btn-outline" href="#diabetic" data-book data-cta="audience-card" data-svc="diabetic" data-who="myself">Book a screening</a>
       </article>
       <article class="card aud">
-        <svg class="aud-ico" aria-hidden="true"><use href="#i-lens"/></svg>
+        <div class="aud-tile" data-img-slot="audience-lens"><svg class="aud-ico" aria-hidden="true"><use href="#i-lens"/></svg></div>
         <h3>Contact lens users</h3>
         <p>Contact lens fitting on site, and follow-up visits when you need them.</p>
         <a class="btn btn-outline" href="#contact-lens" data-book data-cta="audience-card" data-svc="lens" data-who="myself">Book a fitting</a>
@@ -231,16 +231,23 @@
       <h3>Who needs it</h3>
       <p>School-age children, and parents tracking child eyesight power increasing from one check to the next. An eye test for school children is also a good way to begin. Looking for a child eye specialist Koramangala? Book a children's visit and the team will guide you. Parents searching for myopia control children Bangalore options can begin with the same assessment.</p>
     </div>
-    <div class="svc-side card">
-      <h3>What to expect at the visit</h3>
-      <ul class="ticks dark-ticks">
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>A friendly paediatric eye examination</li>
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>A talk with the doctor about options and how often to return</li>
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>Kids' frames fitted on site if they are needed</li>
-      </ul>
-      <h3>How to book</h3>
-      <p>Choose "My child" in the form. We call to confirm a time, ideally outside school hours.</p>
-      <a class="btn btn-primary" href="#book" data-book data-cta="service-section" data-svc="myopia" data-who="my_child">Book a Children's Eye Check<svg class="ico arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+    <div class="svc-visual">
+      <div class="green-panel" data-img-slot="myopia">
+        <svg class="gp-ico" aria-hidden="true"><use href="#i-child"/></svg>
+        <p class="gp-cap">Children's eye care</p>
+        <p class="gp-line">Friendly visits for school-age children</p>
+      </div>
+      <div class="svc-side card">
+        <h3>What to expect at the visit</h3>
+        <ul class="ticks dark-ticks">
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>A friendly paediatric eye examination</li>
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>A talk with the doctor about options and how often to return</li>
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>Kids' frames fitted on site if they are needed</li>
+        </ul>
+        <h3>How to book</h3>
+        <p>Choose "My child" in the form. We call to confirm a time, ideally outside school hours.</p>
+        <a class="btn btn-primary" href="#book" data-book data-cta="service-section" data-svc="myopia" data-who="my_child">Book a Children's Eye Check<svg class="ico arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </div>
     </div>
   </div>
 </section>
@@ -255,16 +262,23 @@
       <h3>Who needs it</h3>
       <p>Adults who live with diabetes, and anyone aged 40 and above who would like a routine eye check.</p>
     </div>
-    <div class="svc-side card tint">
-      <h3>What to expect at the visit</h3>
-      <ul class="ticks dark-ticks">
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>The team explains each step as it happens</li>
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>A consultation with the eye doctor</li>
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>Advice on when to come back for your next check</li>
-      </ul>
-      <h3>How to book</h3>
-      <p>Choose "Diabetic eye screening" in the form, or call us. Please bring earlier eye reports if you have them.</p>
-      <a class="btn btn-primary" href="#book" data-book data-cta="service-section" data-svc="diabetic">Book a Screening<svg class="ico arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+    <div class="svc-visual">
+      <div class="green-panel" data-img-slot="diabetic">
+        <svg class="gp-ico" aria-hidden="true"><use href="#i-eye"/></svg>
+        <p class="gp-cap">Screening for adults</p>
+        <p class="gp-line">Routine checks with the eye doctor</p>
+      </div>
+      <div class="svc-side card tint">
+        <h3>What to expect at the visit</h3>
+        <ul class="ticks dark-ticks">
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>The team explains each step as it happens</li>
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>A consultation with the eye doctor</li>
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>Advice on when to come back for your next check</li>
+        </ul>
+        <h3>How to book</h3>
+        <p>Choose "Diabetic eye screening" in the form, or call us. Please bring earlier eye reports if you have them.</p>
+        <a class="btn btn-primary" href="#book" data-book data-cta="service-section" data-svc="diabetic">Book a Screening<svg class="ico arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </div>
     </div>
   </div>
 </section>
@@ -279,16 +293,23 @@
       <h3>Who needs it</h3>
       <p>First-time lens wearers, people changing lenses, and anyone with tired or dry eyes from work or study.</p>
     </div>
-    <div class="svc-side card">
-      <h3>What to expect at the visit</h3>
-      <ul class="ticks dark-ticks">
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>An eye examination and a lens fitting by the optometrist</li>
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>Guidance on handling and caring for your lenses</li>
-        <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>Blue light blocking and anti-reflective glasses can be discussed for screen use</li>
-      </ul>
-      <h3>How to book</h3>
-      <p>Choose "Contact lens fitting" in the form, and bring your previous glasses or prescription.</p>
-      <a class="btn btn-primary" href="#book" data-book data-cta="service-section" data-svc="lens">Book a Fitting<svg class="ico arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+    <div class="svc-visual">
+      <div class="green-panel" data-img-slot="contact-lens">
+        <svg class="gp-ico" aria-hidden="true"><use href="#i-lens"/></svg>
+        <p class="gp-cap">Fitted on site</p>
+        <p class="gp-line">Lenses chosen and fitted by the team</p>
+      </div>
+      <div class="svc-side card">
+        <h3>What to expect at the visit</h3>
+        <ul class="ticks dark-ticks">
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>An eye examination and a lens fitting by the optometrist</li>
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>Guidance on handling and caring for your lenses</li>
+          <li><svg class="tick" aria-hidden="true"><use href="#i-tick"/></svg>Blue light blocking and anti-reflective glasses can be discussed for screen use</li>
+        </ul>
+        <h3>How to book</h3>
+        <p>Choose "Contact lens fitting" in the form, and bring your previous glasses or prescription.</p>
+        <a class="btn btn-primary" href="#book" data-book data-cta="service-section" data-svc="lens">Book a Fitting<svg class="ico arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </div>
     </div>
   </div>
 </section>
@@ -340,6 +361,7 @@
       <h2 id="doc-h">Meet the doctor at Eye Q</h2>
       <p class="lead">Eye Q Koramangala has an eye doctor Koramangala patients can see, with qualified optometrists, under one roof, so your eye test, consultation and glasses can happen in one visit.</p>
       <div class="card doc-card" data-doctor>
+        <div class="aud-tile doc-tile" data-img-slot="doctor"><svg class="aud-ico" aria-hidden="true"><use href="#i-eye"/></svg></div>
         <h3>Dr. Shalini Shetty</h3>
         <ul class="plain">
           <li>MBBS, MS (Ophthalmology), FRCS (Edinburgh)</li>

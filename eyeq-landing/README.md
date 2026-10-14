@@ -1,135 +1,129 @@
-# Eye Q Opticals & Eye Clinic: /book-consultation landing page
+# Eye Q Opticals & Eye Clinic: /book-consultation
 
-One mobile-first page for Google Ads and Meta Ads traffic. Plain HTML, CSS and vanilla JS. No framework, no build step.
+One mobile-first landing page for Google Ads and Meta Ads traffic. Plain HTML, CSS and vanilla JS. No framework, no build step for the page. Tracking is Google Tag Manager only.
 
 | File | Purpose |
 |---|---|
 | `index.html` | The page, JSON-LD (MedicalClinic, FAQPage), static default H1 |
-| `styles.css` | Styling. Colours are CSS variables at the top |
-| `script.js` | `CONFIG` block at the top, GTM loader, URL parameters, WhatsApp ref codes, form, events |
-| `images/placeholder-*.svg` | Labelled placeholders for real clinic photos |
-| `KEYWORDS.md` | Keyword table: where each phrase appears and how many times |
-| `TEST.md` | How to verify each event in GTM Preview, GA4 DebugView and Meta Test Events |
+| `styles.css` | All styling. Figma tokens are CSS variables at the top |
+| `script.js` | `CONFIG` block at the top, GTM loader, URL parameters, WhatsApp codes, forms, events |
+| `fonts/` | Inter variable font, latin subset, self-hosted, `font-display: swap` |
+| `scripts/optimise-images.mjs` | sharp script: photos in `assets/source/` to responsive WebP in `images/` |
+| `scripts/check-copy.mjs` | Counts keywords and scans for banned terms. `--write` regenerates `KEYWORDS.md` |
+| `ASSETS.md`, `KEYWORDS.md`, `TEST.md` | Image inventory, keyword audit, tracking tests |
 
-To preview locally: `python3 -m http.server 8000` in this folder, then open `http://localhost:8000/index.html?svc=eyetest`.
+Preview: `python3 -m http.server 8000` in this folder, then open `http://localhost:8000/index.html?svc=myopia`.
 
----
+## Status: read this first
 
-## 1. CONFIG checklist
+1. **No photographs are on the page.** `assets/source/` was not in the repository and the Figma image files could not be downloaded from this environment (network policy blocks `www.figma.com` assets). No stock, AI or placeholder images were used, so the photo sections are text and icon layouts. See `ASSETS.md` for the 10-minute steps to add the real photos. Until then there is no `og:image` either.
+2. **Hero layout differs from the brief on purpose.** With no photo, the hero form sits on the right on desktop (visible without scrolling) and the clinic facts card sits under the ticks. On mobile the order is H1, form, subhead, ticks, clinic card, so the form and Book button fit inside a 375 x 667 screen.
+3. **No ads-ready until** the GTM ID, form endpoint and privacy policy URL are set (see checklist).
 
-Everything marked CONFIG is in the `CONFIG` block at the top of `script.js` unless noted.
+## Design tokens (from the Eye Q homepage Figma, file `7oLAtypAVzYmeVSbuX60yk`, frame `108:9`)
 
-| # | Item | Where | Status |
+Read from the frame with the Figma MCP (`get_design_context`). All are CSS variables in `styles.css`.
+
+| Token | Value | Figma source |
+|---|---|---|
+| `--green` | `#0fb07a` | Buttons, ticks, eyebrow border and text |
+| `--ink` | `#0b130e` | Hero background, headings, footer |
+| `--grey` | `#4a504c` | Body text on light backgrounds |
+| `--mint` | `#e4f7ed` | Light section background |
+| `--line` | `#b2d7c3` | Input and card borders |
+| `--moss` | `#4e675a` | Muted green-grey |
+| Hero tint | `rgba(146,255,218,.06 to .2)` | Cards and borders on dark |
+| Font | Inter (Regular 400, Medium 500, Semi Bold 600, Bold 700) | All text. The Figma also uses Jomolhari in a few spots (not used here: one family only) |
+| H1 | 65 px / 70 px line height, semi-bold (scaled: 28 to 52 px here) | Hero |
+| H2 | 50 px semi-bold (scaled: 26 to 44 px) | Section titles |
+| Card title | 25 px | Product cards |
+| Body | 18 px regular (17 px mobile, 18 px desktop here) | Paragraphs, ticks |
+| Button text | 15 px bold, uppercase, 0.75 px tracking (raised to 16 px, 0.05em) | `Book Eye Test` |
+| `--r-btn` | 50 px | All buttons |
+| `--r-input` | 70 px | Form fields |
+| `--r-card` | 20 px | Cards |
+| `--r-panel` | 40 px | Large panels and image frames |
+| `--r-pill` | 40 px | Eyebrow label |
+| Button padding | 30 px x 15 px (Figma); 24 x 12, min height 48 to 52 px here | |
+| Eyebrow | Pill, 1 px green border, 15 px semi-bold uppercase green | Section labels |
+| Section rhythm | Dark hero, mint, white, dark green band, alternating | |
+
+**Deliberate deviations from Figma**
+- Button text is dark (`#0b130e`) on the green button, not white. White on `#0fb07a` is 2.8:1 (fails WCAG AA); dark on green is 6.7:1.
+- Green text on light backgrounds uses `--green-text: #087048` (5.5:1 on mint) instead of `#0fb07a`.
+- Sizes are larger on mobile because the client said earlier designs were too small. Body 17 px or more, buttons 48 px or more high.
+- The `WhatsApp` sticky button uses WhatsApp green with dark text.
+
+Contrast checked: white on `--ink` 18.9:1; `--grey` on white 8.3:1 and on mint 7.4:1; `--ink` on `--green` 6.7:1; `--green-text` on mint 5.5:1.
+
+## CONFIG checklist (all in the `CONFIG` block at the top of `script.js`)
+
+| Item | Key | Now | Action |
 |---|---|---|---|
-| 1 | **GTM container ID** (`gtmId`, now `GTM-XXXXXXX`). While it is the placeholder, GTM is not loaded but events still go to `dataLayer`. | `script.js` **and** the `<noscript>` iframe URL in `index.html` (it cannot read JS) | To do |
-| 2 | **Clinic phone / WhatsApp** (`phone`, `phoneDisplay`, `whatsappNumber`) | `script.js`. Static fallbacks in `index.html` also hold +91 99720 53909 and `JSON-LD` telephone | Filled: +91 99720 53909 |
-| 3 | **Google forwarding number** (`forwardingNumber`, `forwardingDisplay`). When set, every `tel:` link and visible number switches to it. It is never put in the JSON-LD. | `script.js` or GTM (see section 3) | To do |
-| 4 | **Form endpoint** (`formEndpoint`). Must send CORS headers allowing the page's origin and return 2xx. Posts `multipart/form-data` with an `Accept: application/json` header. | `script.js` | To do (placeholder URL fails, which shows the friendly error) |
-| 5 | **Clinic hours** (`hours`). Empty shows the yellow "Hours: to be confirmed" box in the doctor and location sections. Also add `openingHoursSpecification` to the MedicalClinic JSON-LD when known. | `script.js` + JSON-LD | To do |
-| 6 | **Walk-in policy** (`walkInPolicy`). Empty shows a yellow "Walk-in policy: to be confirmed" box in the FAQ. Update the matching sentence in the FAQPage JSON-LD too. | `script.js` + JSON-LD | To do |
-| 7 | **Doctor registration number** (`registrationNumber`, now 36059) | `script.js`; static fallback text in `index.html` | **CONFIRM WITH DOCTOR** |
-| 8 | **Real clinic photos.** Replace the three SVGs in `images/` (keep 640x480, or change `width`/`height` in the `<img>` tags), and rewrite the `alt` text and captions. Real photos only: no stock people, no AI images, no doctor photo. | `images/`, `index.html` | To do |
-| 9 | **Privacy policy and terms URLs** (`privacyUrl`, `termsUrl`, now `/privacy-policy/` and `/terms-and-conditions/`). These pages must exist before ads go live because the form consent line links to the privacy policy. | `script.js` | To do |
-| 10 | **Online booking embed URL** (`bookingEmbedUrl`). Empty keeps `#booking-embed` hidden. Adapt the `message` listener in `initEmbed()` to the tool's completion message. | `script.js` | Future |
-| 11 | `noindex` (default `false`). Set `true` on staging. | `script.js` | Leave false for live |
-| 12 | Map link (`mapUrl`). Swap for the Google Business Profile link when available. | `script.js` | Optional |
-| 13 | Canonical and Open Graph URL (`https://eyeq.biz/book-consultation`). This is an assumption from the footer link. Add a 1200x630 `og:image` once a real photo exists. | `index.html` head | Check |
+| GTM container ID | `gtmId` | `GTM-XXXXXXX` | Set it. Also change the same ID in the `<noscript>` iframe in `index.html` (JS cannot reach it) |
+| Clinic phone and WhatsApp | `phone`, `phoneDisplay`, `whatsappNumber` | +91 99720 53909 | Filled. Static HTML fallbacks hold the same number |
+| Google forwarding number | `forwardingNumber`, `forwardingDisplay` | empty | Add later. Every `tel:` link and visible number switches. It is never put in JSON-LD. GTM can also swap it via `a[data-phone-link]` and `[data-phone-text]` |
+| Form endpoint | `formEndpoint` | placeholder (fails, shows the friendly error) | Set. Must allow CORS from the page origin and return 2xx. Receives `multipart/form-data` with an `Accept: application/json` header |
+| Clinic hours | `hours` | empty | Until set, the page says "Call or WhatsApp to confirm today's timings" |
+| Walk-in policy | `walkInPolicy` | empty | Until set, the FAQ says to call for walk-in availability. Update the FAQPage JSON-LD answer to match |
+| Doctor registration number | `registrationNumber` | 36059 | **CONFIRM WITH DOCTOR.** Static HTML fallback is also 36059 |
+| Privacy and terms URLs | `privacyUrl`, `termsUrl` | `/privacy-policy/`, `/terms-and-conditions/` | Pages must exist before ads go live |
+| Online booking embed | `bookingEmbedUrl`, `bookingEmbedOrigin` | empty | `#booking-embed` stays hidden until set. Adapt the `message` listener (stub) to the tool's completion message, which fires `booking_confirmed` |
+| Doctor photo | `SHOW_DOCTOR_PHOTO` | `false` | Leave false. No doctor photo is used on this page |
+| noindex | `noindex` | `false` | Set `true` on staging |
+| Canonical and share URL | `index.html` head | `https://eyeq.biz/book-consultation` | **Assumed** from the Figma footer email domain. Check it |
+| Open Graph image | `index.html` head | absent | Add a real 1200 x 630 clinic photo when available |
+| Map | iframe in `#location` | Google Maps embed by address | Swap to the Google Business Profile link if preferred |
 
-### Items to confirm with Dr. Shetty before going live
+## Confirm with Dr. Shetty and the clinic's advisor
 
-These are statements a medical regulator or the doctor should own. They are also marked in `index.html` as HTML comments.
+Marked in `index.html` as HTML comments where relevant.
 
-1. Name, qualifications and Karnataka Medical Council Reg. No. 36059 (**CONFIRM WITH DOCTOR**).
-2. FAQ answer: "adults are usually advised a yearly eye test; children with myopia a check every 6 months".
-3. Whether Dr. Shetty may be described as "ophthalmologist", "eye specialist" and "child eye specialist". The phrase **"pediatric ophthalmologist Bangalore" was skipped on purpose** because it needs her confirmation. If confirmed, add it once (for example in the doctor profile).
-4. Whether the clinic provides ortho-k / orthokeratology and runs a myopia clinic. The copy only says the doctor can discuss options, but the keywords imply the service exists.
-5. The "paediatric eye clinic" description and the diabetic eye screening wording ("regular screening is usually advised").
-6. Whether diabetic screening and contact lens fitting are done as described in each "What to expect" section.
+1. **CONFIRM WITH DOCTOR:** Karnataka Medical Council Reg. No. 36059, plus name and qualifications as shown (MBBS, MS (Ophthalmology), FRCS (Edinburgh), over 24 years).
+2. **CONFIRM LIST WITH DR. SHETTY:** the "What your visit includes" list. Every line comes from the clinic's signage or your brief. No tests were invented.
+3. **FAQ wording:** "Adults are usually advised a yearly eye test; children with myopia a check every 6 months." Doctor to confirm.
+4. **Descriptions of the doctor and clinic.** The copy calls Dr. Shetty "the eye doctor" and the clinic an eye clinic with an ophthalmologist. The phrases "child eye specialist Koramangala" and "paediatric eye clinic Koramangala" appear once each. Confirm both are fair descriptions. **`pediatric ophthalmologist Bangalore` was skipped on purpose** (you said to use it only if confirmed). If confirmed, add it once in the doctor section and re-run `node scripts/check-copy.mjs --write`.
+5. **Ortho-k and orthokeratology.** The copy says the doctor can talk through options "such as ortho k lenses" and "orthokeratology". Confirm the clinic provides these. If it does not, remove both sentences and the two keywords.
+6. **Diabetic eye screening** and **contact lens fitting** descriptions: confirm the "What to expect" steps match how the clinic works.
+7. **Walk-in policy** and **opening hours** (above).
+8. **Advisor check on the "budget frames" wording** in the visit list. It comes from the clinic's signage ("designer and budget frames"), but remove it if the advisor reads it as a price claim.
+9. **WhatsApp codes for Meta traffic.** Per the brief, any visitor with `utm_source` containing facebook or instagram gets `M-DEF`, even when `svc` is set. If the team wants service-level Meta codes (M-EYE, M-MYO and so on), change `waRef()` in `script.js`.
+10. Doctor registration and NMC wording on ads themselves, outside this page.
 
----
+## Image consent flags
 
-## 2. Google Ads final URLs
+No photos are on the page yet, so there is nothing to flag today. When photos arrive:
+- A photo showing **Dr. Shetty: do not use on this page.**
+- A photo showing a **patient or a child's face: written consent is needed** before use. Record the photo file name and the consent date here.
 
-Use auto-tagging (gclid is captured automatically). Add UTM parameters through a **Final URL suffix** so the same final URL works across ad groups:
+## Compliance
 
-```
-utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_content={adgroupid}&utm_term={keyword}
-```
+`node scripts/check-copy.mjs` scans the visible text, title, meta description, alt text and script strings for: best, top, leading, number one, world-class, 100 percent, guaranteed, proven, any percentage, drug names, eye drops, medicine, before and after, discount, free, offer, price words, urgency words, testimonial, review, rating, star, "do you have" and "is your child". The last run found none (see `KEYWORDS.md`). The page has no testimonials, ratings, outcome claims, offers or countdowns, and no photos at all.
 
-| Campaign | Final URL |
+## Google and Meta final URLs
+
+Replace the host with the live domain.
+
+| Use | URL |
 |---|---|
-| Brand | `https://eyeq.biz/book-consultation?svc=default` |
-| Eye test | `https://eyeq.biz/book-consultation?svc=eyetest#eye-test` |
-| Myopia and children | `https://eyeq.biz/book-consultation?svc=myopia#myopia` |
+| Brand campaign | `/book-consultation?svc=default` |
+| Eye test ad group | `/book-consultation?svc=eyetest#eye-test` |
+| Myopia ad group | `/book-consultation?svc=myopia#myopia` |
 
-Meta Ads (not for paid search): `?svc=diabetic#diabetic` and `?svc=lens#contact-lens`, with `utm_source=meta&utm_medium=paid_social&utm_campaign=...&utm_content=...` set in the ad's URL parameters.
+Do not run diabetic or contact lens as paid keywords (the sections use plain service language), but `?svc=diabetic#diabetic` and `?svc=lens#contact-lens` work for organic and Meta use. Keep Google Ads auto-tagging on (it adds `gclid`, `wbraid`, `gbraid`) and add UTM parameters on Meta ads (`utm_source=facebook`, `utm_medium=paid_social`, and so on). Parameters are kept for the session in `sessionStorage` and written to hidden form fields.
 
-How `svc` works: it sets the headline, preselects the form service, fills the hidden `svc` field, and picks the WhatsApp ref code (`default` G-DEF, `eyetest` G-EYE, `myopia` G-MYO, `diabetic` G-DIA, `lens` G-LENS). `gclid` and the five `utm_*` values are stored in `sessionStorage` so they survive a reload or an anchor jump. An unknown `svc` falls back to `default`.
+## Porting into WordPress (page template, theme header and menu removed)
 
-WhatsApp messages look like: `Hi Eye Q, I would like to book an eye test. Ref G-EYE`. On the form's success state, the WhatsApp ref follows the service the visitor chose.
+1. Create `page-book-consultation.php` in the Optiplus child theme with only `/* Template Name: Book Consultation */` at the top. Do **not** call `get_header()` or `get_footer()`. Instead write your own minimal `<!doctype html><html <?php language_attributes(); ?>><head>`, `<?php wp_head(); ?>` (optional: only if you need the theme's cookie plugin, otherwise drop it so the theme CSS and scripts do not load), then the page body, then `<?php wp_footer(); ?>` only if needed.
+2. Copy `<head>` contents from `index.html`: title, meta, canonical, Open Graph, JSON-LD, the font preload and the `dataLayer` line. Disable the SEO plugin's title, canonical and JSON-LD for this page so they are not doubled. Let the plugin own them only if you remove them from the template.
+3. Copy `<body>` markup (from `<noscript>` GTM to the sticky bar) into the template. Keep the inline SVG sprite and the skip link.
+4. Copy `styles.css`, `script.js` and the `fonts/` folder (and `images/` once photos exist) into the child theme, for example `/assets/landing/`. Enqueue them **only on this template** with `wp_enqueue_style` and `wp_enqueue_script` (script with `defer`), or print the `<link>` and `<script defer>` tags directly in the template. Update the font URL in `styles.css` and the preload `href` to the theme path.
+5. Because the page header and sticky bar are part of this template, there is no theme header or menu. Remove any theme CSS that adds top padding for a fixed header, and check the WordPress admin bar does not cover the sticky header when you are logged in.
+6. Set the page slug to `book-consultation` with a clean permalink. Exclude it from the sitemap if you want, but keep it indexable unless you set `noindex`.
+7. Put the form endpoint in `CONFIG.formEndpoint`: a Contact Form 7 REST endpoint, a Make or Zapier webhook, or a small serverless function. It must send CORS headers for the page origin.
+8. Caching and minification plugins: exclude `script.js` from "combine" and "delay JavaScript" options so the first tap and the GTM events are not delayed, and keep the font preload.
+9. Test with `TEST.md` on the live URL.
 
----
+## Verification summary
 
-## 3. Google forwarding number (call tracking)
-
-The phone number is addressable by two data attributes:
-
-- `a[data-phone-link]`: the `tel:` link (`href`)
-- `[data-phone-text]`: the visible number text
-
-Option A (simplest): fill `forwardingNumber` and `forwardingDisplay` in `CONFIG`.
-Option B (through GTM): a Custom HTML tag, fired on DOM Ready:
-
-```html
-<script>
-  var num = '+91XXXXXXXXXX', shown = '+91 XXXXX XXXXX';   // Google forwarding number
-  document.querySelectorAll('[data-phone-link]').forEach(function (a) { a.href = 'tel:' + num; });
-  document.querySelectorAll('[data-phone-text]').forEach(function (n) { n.textContent = shown; });
-</script>
-```
-
-Because `click_call` listens for any `tel:` link at click time, the event keeps firing after the swap. No number is ever pushed to `dataLayer`.
-
----
-
-## 4. Porting into WordPress (Optiplus theme)
-
-Goal: serve this page at `/book-consultation` with the theme header, menu and footer removed, and without theme scripts competing with the page.
-
-1. **Use a child theme** of Optiplus so theme updates do not remove the template. Create `wp-content/themes/optiplus-child/` if it does not exist.
-2. **Copy assets** into the child theme: `styles.css` -> `optiplus-child/eyeq/styles.css`, `script.js` -> `optiplus-child/eyeq/script.js`, `images/` -> `optiplus-child/eyeq/images/`.
-3. **Create the page template** `optiplus-child/template-eyeq-landing.php`:
-   ```php
-   <?php
-   /* Template Name: Eye Q Landing (Ads, no header) */
-   $base = get_stylesheet_directory_uri() . '/eyeq';
-   ?>
-   <!DOCTYPE html>
-   <html lang="en-IN">
-   <head>
-     <!-- paste everything inside <head> from index.html here -->
-     <!-- change: href="styles.css"      -> href="<?php echo esc_url($base); ?>/styles.css" -->
-     <!-- change: src="script.js"        -> src="<?php echo esc_url($base); ?>/script.js" -->
-   </head>
-   <body>
-     <!-- paste everything inside <body> from index.html here -->
-     <!-- change: images/placeholder-*.svg -> <?php echo esc_url($base); ?>/images/... -->
-   </body>
-   </html>
-   ```
-   Do **not** call `get_header()`, `get_footer()`, `wp_head()` or `wp_footer()`. Leaving them out is what removes the theme header, the menu and the theme's scripts and styles, which also protects mobile load speed. The template prints its own `<head>`, including the title, meta description, canonical, Open Graph tags and JSON-LD.
-4. **Create the page** in WordPress admin: Pages -> Add New, title "Book Consultation", slug `book-consultation`, Template = "Eye Q Landing (Ads, no header)". Leave the editor body empty (the template ignores it, which also avoids `wpautop` rewriting the HTML). Publish. The URL is then `https://eyeq.biz/book-consultation/`; keep the canonical tag consistent with the real URL, including the trailing slash if WordPress adds one.
-5. **SEO plugin**: since `wp_head()` is not called, Yoast or Rank Math will not output tags on this page. That is intended, so the page's own tags are the only ones. If you would rather use the plugin's tags, add `wp_head()` and delete the duplicates from the template.
-6. **GTM**: the snippet is injected by `script.js` from `CONFIG.gtmId` and a `<noscript>` iframe sits at the top of `<body>`. Make sure GTM is **not** also installed by a plugin or the theme on this page, or events will double count.
-7. **Caching and redirects**: exclude `/book-consultation/` from page-cache query-string stripping and make sure no redirect, security plugin or CDN rule drops `gclid`, `utm_*` or `svc`. Test with the Google Ads final URLs above. Query strings must reach the browser intact.
-8. **Form endpoint**: either a hosted form service that sends CORS headers (Formspree and similar), or a small WordPress REST route (`register_rest_route`) that validates the fields and emails or stores the lead, returns JSON `{ok: true}` with status 200, and allows the page's origin. Plain Google Apps Script web apps do not return CORS headers for JSON fetches from a browser, so they will show the failure message even when the data arrived. Use something else, or add a proxy.
-9. **Honeypot**: the hidden field is named `website`. The script drops it for real users and silently ignores bot submissions. Server-side, also reject any request where it is non-empty.
-10. **Verify** with `TEST.md` on the live URL before turning on ads. Also check the page in Google's PageSpeed Insights (mobile). The page has one local stylesheet, one deferred script, system fonts and lazy-loaded images, so LCP is the hero text.
-
----
-
-## 5. Compliance notes
-
-The page is written to the rules in the brief: no testimonials, reviews, star ratings or counts; no superlatives or guarantees; no percentages or outcome claims; no drug names; no before/after images; no offers; no AI images, stock people or doctor photograph; wording is an invitation to book a check. The form asks no medical-condition questions, and a line above it tells visitors not to type health details. The `dataLayer` helper in `script.js` only allows `link_location`, `service_interest`, `svc` and `ref_code`, so a name, phone number or health detail cannot be pushed by accident.
-
-Before launch, have the clinic or its adviser read the final copy against the current NMC advertising rules and the Google Ads healthcare and Meta health policies. Those policies change, and this build is not a legal review.
+See the end of the build report for what was checked. Lighthouse (mobile, local server, no compression): performance 99, accessibility 100, best practices 100, SEO 100; LCP 1.5 s, CLS 0, TBT 0 ms; total transfer about 120 KB before gzip. The map iframe loads lazily and is excluded from the weight.

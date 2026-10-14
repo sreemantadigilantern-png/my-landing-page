@@ -1,373 +1,309 @@
-/* =====================================================================
-   CONFIG: everything the clinic or web team needs to fill in lives here.
-   ===================================================================== */
-var CONFIG = {
-  // Google Tag Manager container. While this is the placeholder, GTM is not
-  // loaded (events still go to window.dataLayer). Also update the <noscript>
-  // iframe URL in index.html, which cannot read this file.
-  gtmId: 'GTM-XXXXXXX',
-
-  // Adds <meta name="robots" content="noindex, nofollow"> when true.
-  noindex: false,
-
-  // Clinic phone and WhatsApp (digits only for WhatsApp, with country code).
-  phone: '+919972053909',
-  phoneDisplay: '+91 99720 53909',
-  whatsappNumber: '919972053909',
-
-  // CONFIG: Google forwarding number for website calls (to be added later).
-  // When set, every tel: link and number on the page switches to it.
-  // Leave '' to keep the clinic number. Alternative: swap it later in GTM by
-  // targeting [data-phone-link] (href) and [data-phone-text] (visible text).
-  forwardingNumber: '',          // e.g. '+918012345678'
-  forwardingDisplay: '',         // e.g. '+91 80123 45678'
-
-  // CONFIG: where the booking form posts (must allow CORS from this page and
-  // answer 2xx on success). Example: a Formspree URL or a WordPress REST route.
-  formEndpoint: 'https://REPLACE-WITH-FORM-ENDPOINT.example/submit',
-
-  // CONFIG: clinic hours. Empty shows the yellow "to be confirmed" placeholder.
-  hours: '',                     // e.g. 'Mon to Sat, 9:30 am to 8:00 pm'
-
-  // CONFIG: walk-in policy sentence for the FAQ. Empty shows the placeholder.
-  walkInPolicy: '',              // e.g. 'Walk-ins are welcome during clinic hours, subject to availability.'
-
-  // CONFIRM WITH DOCTOR: Karnataka Medical Council registration number.
-  registrationNumber: '36059',
-
-  // CONFIG: privacy policy and terms URLs (placeholders until the pages exist).
-  privacyUrl: '/privacy-policy/',
-  termsUrl: '/terms-and-conditions/',
-
-  // CONFIG: online booking tool URL. Empty keeps #booking-embed hidden.
-  bookingEmbedUrl: '',
-
-  // Directions link. Swap for the Google Business Profile link when available.
-  mapUrl: 'https://www.google.com/maps/search/?api=1&query=Block+3%2C+154%2C+8th+Main+Road%2C+Koramangala%2C+Bengaluru'
+/* Eye Q /book-consultation: vanilla JS, no dependencies.
+   Everything marked CONFIG lives in this block. */
+const CONFIG = {
+  gtmId: "GTM-XXXXXXX",                       // CONFIG: GTM container ID. Also change the <noscript> iframe URL in index.html.
+  phone: "+919972053909",                     // clinic phone, E.164
+  phoneDisplay: "+91 99720 53909",
+  forwardingNumber: "",                       // CONFIG: Google forwarding number for website calls, E.164 (e.g. "+918012345678"). Empty = use clinic phone.
+  forwardingDisplay: "",                      // CONFIG: how the forwarding number is shown (e.g. "+91 80123 45678")
+  whatsappNumber: "919972053909",             // digits only, no plus sign
+  formEndpoint: "https://REPLACE-ME.example/api/eyeq-lead",   // CONFIG: URL that accepts a POST (multipart form data) and returns 2xx
+  hours: "",                                  // CONFIG: clinic hours, e.g. "Mon to Sat, 10 am to 8 pm". Empty = "Call or WhatsApp to confirm today's timings".
+  walkInPolicy: "",                           // CONFIG: e.g. "Walk-ins are welcome when the doctor is available." Empty = nothing is shown.
+  registrationNumber: "36059",                // CONFIRM WITH DOCTOR: Karnataka Medical Council Reg. No.
+  privacyUrl: "/privacy-policy/",             // CONFIG
+  termsUrl: "/terms-and-conditions/",         // CONFIG
+  bookingEmbedUrl: "",                        // CONFIG: online booking tool URL. Empty keeps #booking-embed hidden.
+  bookingEmbedOrigin: "",                     // CONFIG: origin of the booking tool, used to trust its completion message
+  SHOW_DOCTOR_PHOTO: false,                   // CONFIG: stays false. No doctor photo is used on this page.
+  noindex: false                              // CONFIG: true adds <meta name="robots" content="noindex">
 };
-/* ===================== end of CONFIG ===================== */
 
 (function () {
-  'use strict';
-
-  var win = window;
+  "use strict";
   var doc = document;
-  win.dataLayer = win.dataLayer || [];
-
-  /* ---------- Look-up tables ---------- */
-  var HEADLINES = {
-    'default':  'Eye Clinic in Koramangala: Book Your Eye Consultation',
-    'eyetest':  'Eye Test in Koramangala: Book a Comprehensive Eye Exam',
-    'myopia':   "Myopia Management and Children's Eye Care in Bangalore",
-    'diabetic': 'Diabetic Eye Screening in Koramangala',
-    'lens':     'Contact Lens Fitting in Koramangala'
+  var root = doc.documentElement;
+  var dl = (window.dataLayer = window.dataLayer || []);
+  var $ = function (s, c) { return (c || doc).querySelector(s); };
+  var $$ = function (s, c) { return Array.prototype.slice.call((c || doc).querySelectorAll(s)); };
+  var store = {
+    get: function (k) { try { return window.sessionStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { window.sessionStorage.setItem(k, v); } catch (e) { /* storage blocked: carry on */ } }
   };
-  // svc value -> form service option and WhatsApp reference code
-  var SVC_SERVICE = {
-    'default': '', 'eyetest': 'adult-eye-test', 'myopia': 'myopia-assessment',
-    'diabetic': 'diabetic-eye-screening', 'lens': 'contact-lens-fitting'
-  };
-  var SVC_REF = { 'default': 'G-DEF', 'eyetest': 'G-EYE', 'myopia': 'G-MYO', 'diabetic': 'G-DIA', 'lens': 'G-LENS' };
-  var SERVICE_REF = {
-    'childrens-eye-check': 'G-MYO', 'myopia-assessment': 'G-MYO', 'adult-eye-test': 'G-EYE',
-    'diabetic-eye-screening': 'G-DIA', 'contact-lens-fitting': 'G-LENS', 'other': 'G-DEF'
-  };
-  var REF_TEXT = {
-    'G-EYE': 'book an eye test',
-    'G-MYO': "book a children's eye check",
-    'G-DIA': 'book a diabetic eye screening',
-    'G-LENS': 'book a contact lens fitting',
-    'G-DEF': 'book an eye consultation'
-  };
-  var URL_KEYS = ['svc', 'gclid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
-  var STORE_KEY = 'eyeq_params';
+  root.classList.add("js");
 
-  /* ---------- Helpers ---------- */
-  function $(sel, root) { return (root || doc).querySelector(sel); }
-  function $$(sel, root) { return Array.prototype.slice.call((root || doc).querySelectorAll(sel)); }
-
-  function storageGet() {
-    try { return JSON.parse(win.sessionStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
-  }
-  function storageSet(obj) {
-    try { win.sessionStorage.setItem(STORE_KEY, JSON.stringify(obj)); } catch (e) { /* storage blocked: fine */ }
-  }
-  function clean(v) { return String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, '').slice(0, 200); }
-
-  /* ---------- dataLayer: only these keys can ever be sent ----------
-     No name, phone number or health detail is ever allowed through. */
-  var ALLOWED = ['link_location', 'service_interest', 'svc', 'ref_code'];
-  function track(eventName, data) {
-    var payload = { event: eventName };
-    data = data || {};
-    ALLOWED.forEach(function (k) {
-      if (data[k] != null && data[k] !== '') { payload[k] = String(data[k]).slice(0, 60); }
-    });
-    win.dataLayer.push(payload);
-  }
-
-  /* ---------- GTM (the only third-party script) ---------- */
-  function loadGtm() {
-    var id = CONFIG.gtmId;
-    if (!/^GTM-[A-Z0-9]{4,}$/.test(id) || id === 'GTM-XXXXXXX') { return; }
-    win.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-    var s = doc.createElement('script');
-    s.async = true;
-    s.src = 'https://www.googletagmanager.com/gtm.js?id=' + id;
-    doc.head.appendChild(s);
-  }
-
-  function applyNoindex() {
-    if (!CONFIG.noindex) { return; }
-    var m = doc.createElement('meta');
-    m.name = 'robots';
-    m.content = 'noindex, nofollow';
+  /* ---------- robots ---------- */
+  if (CONFIG.noindex) {
+    var m = doc.createElement("meta");
+    m.name = "robots"; m.content = "noindex";
     doc.head.appendChild(m);
   }
 
-  /* ---------- URL parameters, kept in sessionStorage ---------- */
-  var params = {};
-  function readParams() {
-    var stored = storageGet();
-    var q = new URLSearchParams(win.location.search);
-    URL_KEYS.forEach(function (k) {
-      var v = q.get(k);
-      if (v) { stored[k] = clean(v); }
-    });
-    if (!HEADLINES.hasOwnProperty(stored.svc)) { stored.svc = 'default'; }
-    storageSet(stored);
-    params = stored;
+  /* ---------- GTM (the only third-party script besides the map) ---------- */
+  if (CONFIG.gtmId && CONFIG.gtmId !== "GTM-XXXXXXX") {
+    dl.push({ "gtm.start": Date.now(), event: "gtm.js" });
+    var g = doc.createElement("script");
+    g.async = true;
+    g.src = "https://www.googletagmanager.com/gtm.js?id=" + encodeURIComponent(CONFIG.gtmId);
+    doc.head.appendChild(g);
   }
 
-  function currentSvc() { return params.svc || 'default'; }
-
-  function applyParams() {
-    var svc = currentSvc();
-    var h1 = $('[data-h1]');
-    if (h1) { h1.textContent = HEADLINES[svc]; }
-
-    URL_KEYS.forEach(function (k) {
-      var input = doc.querySelector('#booking-form input[name="' + k + '"]');
-      if (input) { input.value = k === 'svc' ? svc : (params[k] || ''); }
-    });
-
-    var select = $('#f-service');
-    if (select && SVC_SERVICE[svc]) { select.value = SVC_SERVICE[svc]; }
+  /* Events carry only a location label and a service category. Never a name, number or health detail. */
+  function track(event, params) {
+    var p = { event: event };
+    for (var k in params) { if (params[k] !== undefined && params[k] !== "") p[k] = params[k]; }
+    dl.push(p);
   }
 
-  /* ---------- Phone and WhatsApp links ---------- */
-  function applyPhone() {
-    var number = CONFIG.forwardingNumber || CONFIG.phone;
-    var display = (CONFIG.forwardingNumber && CONFIG.forwardingDisplay) || (CONFIG.forwardingNumber ? CONFIG.forwardingNumber : CONFIG.phoneDisplay);
-    $$('[data-phone-link]').forEach(function (a) { a.setAttribute('href', 'tel:' + number); });
-    $$('[data-phone-text]').forEach(function (n) { n.textContent = display; });
+  /* ---------- URL parameters, kept for the session ---------- */
+  var TRACK_KEYS = ["gclid", "gbraid", "wbraid", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid"];
+  var saved = {};
+  try { saved = JSON.parse(store.get("eyeq_params") || "{}"); } catch (e) { saved = {}; }
+  var url = new URLSearchParams(window.location.search);
+  TRACK_KEYS.concat(["svc"]).forEach(function (k) {
+    var v = url.get(k);
+    if (v) saved[k] = v.slice(0, 200);
+  });
+  store.set("eyeq_params", JSON.stringify(saved));
+
+  /* ---------- service variants ---------- */
+  var VARIANTS = {
+    "default":  { h1: "Eye Clinic in Koramangala: Book Your Eye Consultation", service: "adult_eye_test",       ref: "G-DEF",  ask: "an eye test" },
+    "eyetest":  { h1: "Eye Test in Koramangala: Book a Comprehensive Eye Exam", service: "adult_eye_test",     ref: "G-EYE",  ask: "an eye test" },
+    "myopia":   { h1: "Myopia Management and Children's Eye Care in Bangalore", service: "myopia_assessment",  ref: "G-MYO",  ask: "a children's eye check" },
+    "diabetic": { h1: "Diabetic Eye Screening in Koramangala",                  service: "diabetic_screening", ref: "G-DIA",  ask: "a diabetic eye screening" },
+    "lens":     { h1: "Contact Lens Fitting in Koramangala",                    service: "contact_lens_fitting", ref: "G-LENS", ask: "a contact lens fitting" }
+  };
+  var svc = VARIANTS[saved.svc] ? saved.svc : "default";
+  var serviceValue = VARIANTS[svc].service;
+  var h1 = $("[data-h1]");
+  if (h1 && svc !== "default") {
+    h1.textContent = VARIANTS[svc].h1;
+    doc.title = VARIANTS[svc].h1 + " | Eye Q Opticals";
   }
 
-  function waHref(ref) {
-    var text = 'Hi Eye Q, I would like to ' + REF_TEXT[ref] + '. Ref ' + ref;
-    return 'https://wa.me/' + CONFIG.whatsappNumber + '?text=' + encodeURIComponent(text);
+  /* ---------- WhatsApp and phone ---------- */
+  var fromMeta = /facebook|instagram/i.test(saved.utm_source || "");
+  function waRef() { return fromMeta ? "M-DEF" : VARIANTS[svc].ref; }
+  function waHref() {
+    var text = "Hi Eye Q, I would like to book " + VARIANTS[svc].ask + ". Ref " + waRef();
+    return "https://wa.me/" + CONFIG.whatsappNumber + "?text=" + encodeURIComponent(text);
   }
-  function setWa(a, ref) {
-    a.setAttribute('href', waHref(ref));
-    a.setAttribute('data-ref', ref);
+  function refreshLinks() {
+    var tel = CONFIG.forwardingNumber || CONFIG.phone;
+    var shown = (CONFIG.forwardingNumber && CONFIG.forwardingDisplay) || CONFIG.phoneDisplay;
+    $$("a[data-phone-link]").forEach(function (a) { a.setAttribute("href", "tel:" + tel); });
+    $$("[data-phone-text]").forEach(function (s) { s.textContent = shown; });
+    $$("a[data-wa]").forEach(function (a) { a.setAttribute("href", waHref()); });
   }
-  function applyWhatsApp() {
-    $$('[data-wa]').forEach(function (a) {
-      var v = a.getAttribute('data-wa');
-      setWa(a, v === 'auto' ? SVC_REF[currentSvc()] : v);
-    });
-  }
+  refreshLinks();
+  $$("a[data-privacy]").forEach(function (a) { a.setAttribute("href", CONFIG.privacyUrl); });
+  $$("a[data-terms]").forEach(function (a) { a.setAttribute("href", CONFIG.termsUrl); });
+  $$("[data-regno]").forEach(function (s) { s.textContent = CONFIG.registrationNumber; });
+  if (CONFIG.hours) $$("[data-hours]").forEach(function (s) { s.textContent = CONFIG.hours; });
+  if (CONFIG.walkInPolicy) $$("[data-walkin]").forEach(function (s) { s.textContent = CONFIG.walkInPolicy; s.hidden = false; s.classList.remove("placeholder"); });
+  root.setAttribute("data-doctor-photo", CONFIG.SHOW_DOCTOR_PHOTO ? "on" : "off");
 
-  /* ---------- Config-driven text and links ---------- */
-  function applyConfigText() {
-    $$('[data-hours]').forEach(function (n) {
-      if (CONFIG.hours) { n.textContent = 'Hours: ' + CONFIG.hours; n.classList.remove('placeholder'); }
-    });
-    $$('[data-walkin]').forEach(function (n) {
-      if (CONFIG.walkInPolicy) { n.textContent = CONFIG.walkInPolicy; n.classList.remove('placeholder'); }
-    });
-    $$('[data-reg]').forEach(function (n) { if (CONFIG.registrationNumber) { n.textContent = CONFIG.registrationNumber; } });
-    $$('[data-privacy]').forEach(function (a) { a.setAttribute('href', CONFIG.privacyUrl); });
-    $$('[data-terms]').forEach(function (a) { a.setAttribute('href', CONFIG.termsUrl); });
-    $$('[data-map-link]').forEach(function (a) { a.setAttribute('href', CONFIG.mapUrl); });
-  }
-
-  /* ---------- Click tracking (delegated, covers every link) ---------- */
-  function locationOf(a) {
-    var holder = a.closest('[data-loc]');
-    return holder ? holder.getAttribute('data-loc') : '';
-  }
-  function onClick(e) {
-    var a = e.target.closest ? e.target.closest('a') : null;
-    if (!a) { return; }
-
-    var svcBtn = a.getAttribute('data-service');
-    if (svcBtn) {
-      var select = $('#f-service');
-      if (select) { select.value = svcBtn; select.removeAttribute('aria-invalid'); hideError('service'); }
-    }
-
-    var href = a.getAttribute('href') || '';
-    var loc = locationOf(a);
-    if (/^tel:/i.test(href)) {
-      track('click_call', { link_location: loc });
-    } else if (/^https?:\/\/wa\.me\//i.test(href)) {
-      track('click_whatsapp', { link_location: loc, ref_code: a.getAttribute('data-ref') });
-    } else if (a.hasAttribute('data-directions')) {
-      track('click_directions', { link_location: loc });
-    }
-  }
-
-  /* ---------- Booking form ---------- */
-  var form, submitBtn;
-
-  function showError(field, msg) {
-    var el = $('#e-' + field);
-    var input = field === 'consent' ? $('#f-consent') : $('#f-' + field);
-    if (el) { el.textContent = msg; el.hidden = false; }
-    if (input) { input.setAttribute('aria-invalid', 'true'); }
-  }
-  function hideError(field) {
-    var el = $('#e-' + field);
-    var input = field === 'consent' ? $('#f-consent') : $('#f-' + field);
-    if (el) { el.textContent = ''; el.hidden = true; }
-    if (input) { input.removeAttribute('aria-invalid'); }
-  }
-
-  // Accepts 10 digits starting 6-9, with optional +91, 91 or 0 in front.
-  function normaliseMobile(raw) {
-    var d = String(raw || '').replace(/[\s\-().]/g, '');
-    d = d.replace(/^\+?91(?=\d{10}$)/, '').replace(/^0(?=\d{10}$)/, '');
-    return /^[6-9]\d{9}$/.test(d) ? d : '';
-  }
-
-  function validate() {
-    var firstBad = null;
-    function bad(field, msg, id) { showError(field, msg); if (!firstBad) { firstBad = $(id); } }
-    ['name', 'mobile', 'service', 'consent'].forEach(hideError);
-
-    var name = form.elements.name.value.trim();
-    if (name.length < 2) { bad('name', 'Please enter your name.', '#f-name'); }
-
-    var mobile = normaliseMobile(form.elements.mobile.value);
-    if (!mobile) { bad('mobile', 'Please enter a 10-digit Indian mobile number, for example 98765 43210.', '#f-mobile'); }
-
-    if (!form.elements.service.value) { bad('service', 'Please choose a service.', '#f-service'); }
-
-    if (!form.elements.consent.checked) { bad('consent', 'Please tick the box so we can contact you about this booking.', '#f-consent'); }
-
-    if (firstBad) { firstBad.focus(); return null; }
-    return mobile;
-  }
-
-  function showSuccess() {
-    var service = form.elements.service.value;
-    var ref = SERVICE_REF[service] || SVC_REF[currentSvc()];
-    var wa = $('#success-wa');
-    if (wa) { setWa(wa, ref); }
-    form.hidden = true;
-    $('#form-error').hidden = true;
-    var box = $('#form-success');
-    box.hidden = false;
-    var title = $('#success-title');
-    if (title) { title.focus(); }
-    // Category only. No name, number or health detail.
-    track('generate_lead', { service_interest: service, svc: currentSvc(), ref_code: ref });
-  }
-
-  function onSubmit(e) {
-    e.preventDefault();
-    if (submitBtn.disabled) { return; }
-    var mobile = validate();
-    if (!mobile) { return; }
-
-    // Honeypot: bots fill it. Pretend to succeed, send nothing, track nothing.
-    if (form.elements.website.value) { form.hidden = true; $('#form-success').hidden = false; return; }
-
-    var fd = new FormData(form);
-    fd.set('mobile', mobile);
-    fd.delete('website');
-
-    var label = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Sending…';
-    $('#form-error').hidden = true;
-
-    var ctrl = ('AbortController' in win) ? new AbortController() : null;
-    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
-
-    fetch(CONFIG.formEndpoint, {
-      method: 'POST',
-      body: fd,
-      headers: { 'Accept': 'application/json' },
-      signal: ctrl ? ctrl.signal : undefined
-    }).then(function (res) {
-      if (!res.ok) { throw new Error('bad status'); }
-      showSuccess();
-    }).catch(function () {
-      var box = $('#form-error');
-      box.hidden = false;
-      box.focus();
-    }).then(function () {
-      if (timer) { clearTimeout(timer); }
-      submitBtn.disabled = false;
-      submitBtn.textContent = label;
+  /* ---------- forms: hidden fields, preselect ---------- */
+  var forms = $$("form[data-form]");
+  function fillHidden() {
+    forms.forEach(function (f) {
+      TRACK_KEYS.forEach(function (k) { var i = f.elements[k]; if (i) i.value = saved[k] || ""; });
+      if (f.elements.svc) f.elements.svc.value = svc;
     });
   }
+  function setService(value) {
+    serviceValue = value;
+    $$("[data-service]").forEach(function (el) { el.value = value; });
+  }
+  function setWho(value) {
+    $$("input[name=who]").forEach(function (r) { r.checked = (r.value === value); });
+  }
+  function setSvc(key, value, who) {
+    if (VARIANTS[key]) { svc = key; saved.svc = key; store.set("eyeq_params", JSON.stringify(saved)); }
+    setService(value || VARIANTS[svc].service);
+    if (who) setWho(who);
+    fillHidden();
+    refreshLinks();
+  }
+  setService(serviceValue);
+  if (svc === "myopia") setWho("my_child");
+  fillHidden();
 
-  function initForm() {
-    form = $('#booking-form');
-    if (!form) { return; }
-    submitBtn = $('#f-submit');
-    form.addEventListener('submit', onSubmit);
-    ['name', 'mobile', 'service'].forEach(function (f) {
-      var input = $('#f-' + f);
-      if (input) { input.addEventListener('input', function () { hideError(f); }); }
+  /* ---------- Book buttons ---------- */
+  var heroForm = $("#hero-form");
+  var fullForm = $("#book");
+  function inView(el) {
+    var r = el.getBoundingClientRect();
+    return r.top >= 0 && r.bottom <= (window.innerHeight || root.clientHeight);
+  }
+  function focusFirst(form) {
+    var i = $("input[name=name]", form);
+    if (i) { try { i.focus({ preventScroll: true }); } catch (e) { i.focus(); } }
+  }
+  $$("a[data-book]").forEach(function (a) {
+    a.addEventListener("click", function (e) {
+      var cta = a.getAttribute("data-cta") || "";
+      store.set("eyeq_entry_cta", cta);
+      var key = a.getAttribute("data-svc");
+      var forced = a.getAttribute("data-service-value");
+      var who = a.getAttribute("data-who");
+      if (key) setSvc(key, forced || VARIANTS[key].service, who);
+      var href = a.getAttribute("href");
+      if (href === "#book") {
+        e.preventDefault();
+        if (heroForm && inView(heroForm) && window.innerWidth >= 900) {
+          focusFirst(heroForm);
+        } else {
+          fullForm.scrollIntoView({ behavior: "smooth", block: "start" });
+          window.setTimeout(function () { focusFirst(fullForm); }, 600);
+        }
+      }
+      /* other hrefs (#myopia etc.) use normal anchor scrolling */
     });
-    var consent = $('#f-consent');
-    if (consent) { consent.addEventListener('change', function () { hideError('consent'); }); }
+  });
+
+  /* ---------- validation and submit ---------- */
+  function cleanMobile(v) {
+    var d = String(v || "").replace(/[\s\-().]/g, "");
+    d = d.replace(/^\+?91/, "").replace(/^0+/, "");
+    return /^[6-9]\d{9}$/.test(d) ? d : "";
+  }
+  function showErr(field, msg) {
+    var p = $(".err", field);
+    if (p) p.textContent = msg || "";
+    field.classList.toggle("invalid", !!msg);
+  }
+  function validate(f) {
+    var ok = true;
+    var name = f.elements.name, mobile = f.elements.mobile;
+    var nf = name.closest(".field"), mf = mobile.closest(".field"), wf = $("fieldset[data-who]", f);
+    if (name.value.trim().length < 2) { showErr(nf, "Please enter your name."); ok = false; } else showErr(nf, "");
+    if (!cleanMobile(mobile.value)) { showErr(mf, "Please enter a 10-digit Indian mobile number."); ok = false; } else showErr(mf, "");
+    if (!f.querySelector("input[name=who]:checked")) { showErr(wf, "Please choose who the eye test is for."); ok = false; } else showErr(wf, "");
+    return ok;
+  }
+  forms.forEach(function (f) {
+    $$("input", f).forEach(function (i) {
+      i.addEventListener("input", function () { var fld = i.closest(".field"); if (fld && fld.classList.contains("invalid")) validate(f); });
+    });
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!validate(f)) {
+        var bad = $(".field.invalid input, .field.invalid select", f);
+        if (bad) bad.focus();
+        return;
+      }
+      submit(f);
+    });
+  });
+
+  function payload(f) {
+    var fd = new FormData();
+    fd.append("name", f.elements.name.value.trim());
+    fd.append("mobile", cleanMobile(f.elements.mobile.value));
+    fd.append("who", f.querySelector("input[name=who]:checked").value);
+    var sv = f.elements.service ? f.elements.service.value : serviceValue;
+    fd.append("service", sv);
+    fd.append("preferred_day", f.elements.preferred_day ? f.elements.preferred_day.value : "");
+    fd.append("svc", svc);
+    TRACK_KEYS.forEach(function (k) { fd.append(k, saved[k] || ""); });
+    fd.append("entry_cta", store.get("eyeq_entry_cta") || "");
+    fd.append("form_location", f.getAttribute("data-form"));
+    fd.append("page", window.location.pathname);
+    return fd;
   }
 
-  /* ---------- Online booking embed (future tool) ---------- */
-  function initEmbed() {
-    var holder = $('#booking-embed');
-    if (!holder || !CONFIG.bookingEmbedUrl) { return; }
-    var origin;
-    try { origin = new URL(CONFIG.bookingEmbedUrl, win.location.href).origin; } catch (e) { return; }
+  function submit(f) {
+    var btn = $("button[type=submit]", f);
+    var status = $(".form-status", f);
+    var where = f.getAttribute("data-form");
+    var sv = f.elements.service ? f.elements.service.value : serviceValue;
+    if (f.elements.company && f.elements.company.value) { success(f, where, sv, true); return; }  // honeypot: look successful, send nothing
+    btn.disabled = true;
+    status.className = "form-status"; status.textContent = "Sending...";
+    var ctl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = window.setTimeout(function () { if (ctl) ctl.abort(); }, 12000);
+    fetch(CONFIG.formEndpoint, { method: "POST", body: payload(f), headers: { Accept: "application/json" }, signal: ctl ? ctl.signal : undefined })
+      .then(function (res) {
+        window.clearTimeout(timer);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        success(f, where, sv, false);
+      })
+      .catch(function () {
+        window.clearTimeout(timer);
+        btn.disabled = false;
+        status.className = "form-status error";
+        status.innerHTML = "Sorry, we could not send your request just now. Please call us on <a href=\"tel:" + (CONFIG.forwardingNumber || CONFIG.phone) +
+          "\" data-cta=\"form\">" + ((CONFIG.forwardingNumber && CONFIG.forwardingDisplay) || CONFIG.phoneDisplay) + "</a> or message us on WhatsApp.";
+      });
+  }
 
-    var frame = doc.createElement('iframe');
-    frame.src = CONFIG.bookingEmbedUrl;
-    frame.title = 'Online booking';
-    frame.loading = 'lazy';
-    holder.appendChild(frame);
-    holder.hidden = false;
+  function success(f, where, sv, fake) {
+    if (!fake) track("generate_lead", { service_interest: sv, cta_location: where, entry_cta: store.get("eyeq_entry_cta") || "" });
+    var tel = CONFIG.forwardingNumber || CONFIG.phone;
+    var div = doc.createElement("div");
+    div.className = "success"; div.setAttribute("tabindex", "-1");
+    div.innerHTML = "<h3>Thank you, we will call you to confirm</h3><p>Our team will phone you to confirm your appointment. If it is urgent, call or message us now.</p>" +
+      "<div class=\"row\"><a class=\"btn btn-primary\" href=\"tel:" + tel + "\" data-cta=\"" + where + "\">Call</a>" +
+      "<a class=\"btn btn-outline\" href=\"" + waHref() + "\" data-wa data-cta=\"" + where + "\" rel=\"noopener\">WhatsApp</a></div>";
+    f.innerHTML = ""; f.appendChild(div);
+    f.removeAttribute("novalidate");
+    div.focus();
+  }
 
-    // STUB: adapt the message shape to whichever booking tool is chosen.
-    // Expected here: the embed posts {type: 'booking_confirmed'} to this page.
-    win.addEventListener('message', function (e) {
-      if (e.origin !== origin || !e.data) { return; }
-      if (e.data.type === 'booking_confirmed' || e.data.event === 'booking_confirmed') {
-        track('booking_confirmed', { link_location: 'booking-embed' });
+  /* ---------- click tracking (delegated, so success-state links count too) ---------- */
+  function ctaOf(el) {
+    var n = el.closest("[data-cta]");
+    return n ? n.getAttribute("data-cta") : "";
+  }
+  doc.addEventListener("click", function (e) {
+    var a = e.target.closest ? e.target.closest("a[href]") : null;
+    if (!a) return;
+    var href = a.getAttribute("href") || "";
+    if (href.indexOf("tel:") === 0) track("click_call", { cta_location: ctaOf(a) });
+    else if (href.indexOf("wa.me") !== -1) track("click_whatsapp", { cta_location: ctaOf(a), ref_code: waRef() });
+    else if (a.hasAttribute("data-directions")) track("click_directions", { cta_location: ctaOf(a) });
+  });
+
+  /* ---------- optional online booking embed ---------- */
+  var embed = $("#booking-embed");
+  if (embed && CONFIG.bookingEmbedUrl) {
+    var fr = doc.createElement("iframe");
+    fr.src = CONFIG.bookingEmbedUrl; fr.title = "Online booking"; fr.loading = "lazy";
+    embed.appendChild(fr); embed.hidden = false;
+    window.addEventListener("message", function (ev) {
+      if (CONFIG.bookingEmbedOrigin && ev.origin !== CONFIG.bookingEmbedOrigin) return;
+      /* STUB: adapt to the booking tool's real completion message. */
+      if (ev.data && (ev.data.type === "booking_completed" || ev.data === "booking_completed")) {
+        track("booking_confirmed", { cta_location: "form" });
       }
     });
   }
 
-  // Manual hook for testing the stub: EyeQ.bookingConfirmed() in the console.
-  win.EyeQ = { bookingConfirmed: function () { track('booking_confirmed', { link_location: 'booking-embed' }); } };
-
-  /* ---------- Start ---------- */
-  applyNoindex();
-  loadGtm();
-
-  function init() {
-    readParams();
-    applyParams();
-    applyPhone();
-    applyWhatsApp();
-    applyConfigText();
-    initForm();
-    initEmbed();
-    doc.addEventListener('click', onClick);
+  /* ---------- sticky bar: never sits over a form ---------- */
+  var bar = $(".sticky-bar");
+  if (bar && "IntersectionObserver" in window) {
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { seen[en.target.id] = en.isIntersecting; });
+      var any = Object.keys(seen).some(function (k) { return seen[k]; });
+      bar.classList.toggle("is-hidden", any);
+    }, { threshold: 0 });
+    [heroForm, fullForm].forEach(function (el) { if (el) io.observe(el); });
   }
-  if (doc.readyState === 'loading') { doc.addEventListener('DOMContentLoaded', init); } else { init(); }
+  doc.addEventListener("focusin", function (e) {
+    if (bar && e.target.matches && e.target.matches("input, select")) bar.classList.add("is-hidden");
+  });
+
+  /* ---------- gentle fade on scroll ---------- */
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduce && "IntersectionObserver" in window) {
+    var fio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); fio.unobserve(en.target); } });
+    }, { rootMargin: "0px 0px -60px 0px" });
+    $$(".sec .card, .svc-text, .sec h2").forEach(function (el) {
+      if (el.getBoundingClientRect().top > (window.innerHeight || 700)) { el.classList.add("fx"); fio.observe(el); }
+    });
+  }
 })();

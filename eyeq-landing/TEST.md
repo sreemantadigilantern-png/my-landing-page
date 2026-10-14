@@ -1,73 +1,56 @@
-# Verifying tracking
+# How to verify tracking
 
-All events are pushed to `window.dataLayer` by `script.js`. GTM turns them into GA4, Google Ads and Meta events. Set `CONFIG.gtmId` first (and the `<noscript>` ID in `index.html`).
+All events go through `window.dataLayer` and Google Tag Manager only. No gtag, no Meta pixel code on the page. Before testing, set `CONFIG.gtmId` in `script.js` and the `GTM-XXXXXXX` in the `<noscript>` iframe in `index.html`.
 
-## Events pushed by the page
+## Events
 
-| Event | Fires when | Parameters (all non-personal) |
+| Event | Fires when | Parameters |
 |---|---|---|
-| `generate_lead` | Form posted successfully (HTTP 2xx) | `service_interest` (category slug such as `adult-eye-test`), `svc`, `ref_code` |
-| `click_call` | Any `tel:` link is clicked | `link_location` |
-| `click_whatsapp` | Any `wa.me` link is clicked | `link_location`, `ref_code` (G-EYE, G-MYO, G-DIA, G-LENS, G-DEF) |
-| `click_directions` | The map/directions link is clicked | `link_location` |
-| `booking_confirmed` | The booking embed reports completion (stub; also `EyeQ.bookingConfirmed()` in the console) | `link_location` |
+| `generate_lead` | A form submit gets a 2xx response from `CONFIG.formEndpoint` | `service_interest` (category only, e.g. `adult_eye_test`), `cta_location` (`hero` or `form`), `entry_cta` (the last Book button used, if any) |
+| `click_call` | Any `tel:` link is clicked | `cta_location` |
+| `click_whatsapp` | Any `wa.me` link is clicked | `cta_location`, `ref_code` (G-EYE, G-MYO, G-DIA, G-LENS, G-DEF or M-DEF) |
+| `click_directions` | The "Get directions" link is clicked | `cta_location` |
+| `booking_confirmed` | The booking embed posts a completion message (stub) | `cta_location: "form"` |
 
-`link_location` values: `action-bar` (desktop header), `bottom-bar` (mobile bar), `hero`, `eye-test`, `myopia`, `diabetic`, `contact-lens`, `form`, `form-error`, `form-success`, `location`, `booking-embed`.
+`cta_location` is one of: `header`, `hero`, `audience-card`, `service-section`, `sticky-bar`, `form`, `footer`. No name, phone number or health detail is ever pushed.
 
-Scroll depth is left to GTM's built-in Scroll Depth trigger. No name, phone number or health detail is ever sent.
+## 1. Quick check in the browser console (no GTM needed)
 
-## 0. Quick check in the browser console (no GTM needed)
+Open the page, open DevTools, then run `dataLayer` after each action below. Each action should add exactly one object.
 
-1. Open `https://eyeq.biz/book-consultation?svc=eyetest&gclid=TEST123&utm_source=test`.
-2. DevTools -> Console: `dataLayer` (shows the array). `sessionStorage.getItem('eyeq_params')` shows the stored `svc`, `gclid` and `utm_*`.
-3. Click each Call, WhatsApp and Get directions button. On a desktop the `tel:` and `wa.me` links may open another app or tab; the event is pushed before that happens. Run `dataLayer.filter(e => e.event)` to list them.
-4. Submit the form with a test number (see step 1 below), then check for `generate_lead`.
-5. Confirm there is no name or number anywhere: `JSON.stringify(dataLayer)` should contain none of what you typed.
+1. Tap the phone icon in the header: `click_call`, `cta_location: "header"`.
+2. Tap WhatsApp in the mobile bar (or "WhatsApp us" under the hero form): `click_whatsapp`, with `ref_code`.
+3. Tap "Get directions" in the Find us section: `click_directions`, `cta_location: "footer"`.
+4. Submit the hero form with valid details: `generate_lead`, `cta_location: "hero"`.
+5. Submit the lower form: `generate_lead`, `cta_location: "form"`.
+6. Check that none of the objects contains the name or number you typed.
 
-## 1. GTM Preview (Tag Assistant)
+URL checks: `?svc=myopia` changes the H1 and preselects "Myopia assessment"; `?svc=x&utm_source=facebook` makes the WhatsApp message end in `Ref M-DEF`; `?gclid=test123` fills the hidden `gclid` field of both forms (inspect the form in Elements, or read the POST body in the Network tab).
 
-Setup in GTM (once):
-- One **Custom Event** trigger per event name above (exact, case-sensitive: `generate_lead`, `click_call`, `click_whatsapp`, `click_directions`, `booking_confirmed`).
-- Data Layer Variables: `service_interest`, `svc`, `ref_code`, `link_location`.
-- Tags: GA4 Event tag per event (event name the same as the dataLayer event, parameters from the variables); Google Ads conversion tag on `generate_lead` (and `click_call` if you count calls); Meta tags as in section 3; Scroll Depth trigger for scroll tracking.
+## 2. GTM Preview (Tag Assistant)
 
-Test:
-1. Open GTM -> Preview, enter the page URL with test params, e.g. `https://eyeq.biz/book-consultation?svc=myopia&gclid=TEST123&utm_source=google&utm_medium=cpc&utm_campaign=test`, and connect.
-2. **click_call**: click Call (mobile bar, or the number in the desktop header). In the Tag Assistant summary a `click_call` message appears; its Data Layer tab shows `link_location`. The GA4 tag should show "Tag Fired".
-3. **click_whatsapp**: click WhatsApp Us in the hero. Expect `ref_code: G-MYO` for `svc=myopia`. Repeat with `svc=eyetest` (G-EYE), `diabetic` (G-DIA), `lens` (G-LENS) and no `svc` (G-DEF). The message sent to WhatsApp should read like `Hi Eye Q, I would like to book an eye test. Ref G-EYE`.
-4. **click_directions**: click Get directions in the Find the Clinic section.
-5. **generate_lead**: fill the form with a test name, a test mobile such as `98765 43210`, any service, tick the consent, submit. After the success panel appears, the summary shows `generate_lead` with `service_interest` set to the category, and no name or number. Also open the **Variables** tab to confirm.
-6. **No lead on failure**: set `formEndpoint` to a URL that fails (the placeholder does). The friendly error with the phone number appears and **no** `generate_lead` is in the summary.
-7. **booking_confirmed**: with no embed yet, run `EyeQ.bookingConfirmed()` in the console and confirm the event. Once an embed is added, complete a test booking inside it and confirm it fires without the console call.
-8. **Call forwarding swap** (when used): after the GTM swap tag runs, hover a Call button to confirm the `tel:` number changed, click it, and confirm `click_call` still fires.
+1. In GTM, create one **Custom Event** trigger per event name above (`generate_lead`, `click_call`, `click_whatsapp`, `click_directions`, `booking_confirmed`).
+2. Create Data Layer Variables for `cta_location`, `service_interest`, `ref_code`.
+3. Click Preview, enter the page URL (add `?gclid=test&utm_source=google&utm_medium=cpc`), then repeat the actions above.
+4. In the Tag Assistant timeline each event must appear as its own message. Open it, check the Data Layer tab for the parameters, and check that your tags fired under "Tags Fired".
 
-## 2. GA4 DebugView
+## 3. GA4 DebugView
 
-1. In GTM Preview mode, or with the GA Debugger extension, open GA4 -> Admin -> DebugView and pick your device.
-2. Repeat the clicks and the form submission from section 1. Each should appear as an event: `click_call`, `click_whatsapp`, `click_directions`, `generate_lead` (and `booking_confirmed`).
-3. Click each event and check the parameters: `ref_code`, `link_location`, `service_interest`, `svc`. Confirm there is no name or phone number.
-4. In Admin -> Events, mark `generate_lead` as a key event. Register `ref_code`, `link_location`, `service_interest` and `svc` as custom dimensions if you want to report on them.
-5. Landing page parameters: confirm `gclid` and the UTMs are in the page URL of the first hit (GA4 reads them from the URL).
+1. Create a GA4 Event tag per trigger with the same event names, passing the parameters above. Mark `generate_lead` as a key event.
+2. Preview in GTM (debug mode sends events to DebugView), then open GA4, Admin, DebugView.
+3. Repeat the actions. Each event shows with its parameters. Register `cta_location`, `service_interest` and `ref_code` as custom dimensions to report on them.
 
-## 3. Meta Test Events
+## 4. Meta Test Events
 
-1. In Meta Events Manager, open the Pixel (or dataset) used in GTM -> **Test events**, and copy the test code. Load the page with GTM Preview connected and the Meta Pixel Helper extension on.
-2. In GTM, map events (Meta's own template or a Custom HTML tag):
-   - `generate_lead` -> Meta standard event `Lead` (send only the category; no name or number as custom data and keep Advanced Matching off unless the clinic's privacy policy covers it).
-   - `click_call`, `click_whatsapp` -> `Contact` (or custom events with the same names).
-   - `click_directions` -> custom event `click_directions`.
-   - `booking_confirmed` -> `Schedule` (or a custom event).
-3. Complete each action on the page. Each should appear in the **Test events** list within a few seconds with the browser source. Check that the event parameters contain no personal data.
-4. Health policy reminder: do not send health details to Meta. Service category only (for example, `adult-eye-test`) is acceptable, but if there is any doubt, drop `service_interest` from the Meta tag and keep it for GA4 only.
+1. In Meta Events Manager, open your pixel, then Test Events, and copy the test code.
+2. Put the Meta pixel base code in a GTM tag (not on the page) that fires on All Pages, and add Lead on the `generate_lead` trigger. Use Contact on `click_call` and `click_whatsapp` if wanted.
+3. Open the page through the "Open website" button in Test Events (or GTM Preview with the test code). Submit the form. A `Lead` event appears in Test Events with the browser source. Do not send the name or phone as parameters.
+4. For a Meta ad test, open the page with `?utm_source=facebook` to see the `M-DEF` WhatsApp ref code.
 
-## 4. Regression checklist before ads go live
+## 5. Google Ads conversions
 
-- [ ] `svc` values change the headline: default, `eyetest`, `myopia`, `diabetic`, `lens`; an unknown value falls back to default.
-- [ ] Disabling JavaScript still shows the default H1.
-- [ ] `gclid` and `utm_*` land in the form's hidden fields (DevTools -> Elements, or the received form data).
-- [ ] The real form endpoint receives the submission, and the front desk can see `svc`, `gclid`, `utm_*` and the service.
-- [ ] Phone and WhatsApp links work on a real phone (Android and iOS).
-- [ ] The bottom bar does not cover the footer text or the consent line on a small phone.
-- [ ] The privacy policy link opens a real page.
-- [ ] `noindex` is `false` on production.
-- [ ] GTM only loads once (the page makes a single `gtm.js` request).
+Create conversions from the GA4 key events (import) or with a Google Ads conversion tag on `generate_lead`, `click_call` and `click_whatsapp`. For calls from ads, use the forwarding number: set `CONFIG.forwardingNumber` (see README) and every `tel:` link and visible number switches. GTM can also swap numbers: target the selector `a[data-phone-link]` and `[data-phone-text]`.
+
+## 6. Form endpoint test
+
+Point `CONFIG.formEndpoint` at the real endpoint and submit. The request is a `multipart/form-data` POST with: name, mobile (10 digits), who, service, preferred_day, svc, gclid, gbraid, wbraid, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, entry_cta, form_location, page. The honeypot field `company` is never sent: a filled honeypot shows the success screen and sends nothing. Turn the endpoint off to see the friendly error with the phone number.
